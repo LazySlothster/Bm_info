@@ -5,7 +5,7 @@ import asyncio
 import disnake  # Using disnake, a modern fork of discord.py
 import json
 import os
-from pathlib importPath
+# from pathlib import Path # <-- REMOVED THIS LINE
 
 # --- Page Configuration ---
 st.set_page_config(
@@ -15,9 +15,13 @@ st.set_page_config(
 )
 
 # --- File Paths ---
-CSV_FILE_PATH = Path("users.csv")
-DISCORD_DATA_PATH = Path("discord_data.json")
-COMBINED_DATA_PATH = Path("combined_data.json")
+# Use os.path for better compatibility
+# This gets the directory where the app.py script is located
+CWD = os.path.dirname(__file__) 
+CSV_FILE_PATH = os.path.join(CWD, "users.csv")
+DISCORD_DATA_PATH = os.path.join(CWD, "discord_data.json")
+COMBINED_DATA_PATH = os.path.join(CWD, "combined_data.json")
+
 
 # --- Roblox API Constants ---
 ROBLOX_AVATAR_SIZE = "150x150"
@@ -163,7 +167,7 @@ def refresh_all_data():
     try:
         # 1. Read base data from CSV
         progress_bar.progress(10, "Reading users.csv...")
-        if not CSV_FILE_PATH.exists():
+        if not os.path.exists(CSV_FILE_PATH): # <-- CHANGED
             st.error("users.csv not found. Please upload it to your GitHub repository.")
             return
             
@@ -177,7 +181,7 @@ def refresh_all_data():
         asyncio.run(fetch_discord_data(guild_id, bot_token, target_discord_ids))
         
         # Load the data the bot just saved
-        if DISCORD_DATA_PATH.exists():
+        if os.path.exists(DISCORD_DATA_PATH): # <-- CHANGED
             with open(DISCORD_DATA_PATH, "r") as f:
                 discord_data_map = json.load(f)
         else:
@@ -225,7 +229,7 @@ def refresh_all_data():
         progress_bar.progress(100, "Data refresh complete!")
         st.success("All user data has been refreshed and cached.")
         # Rerun to clear the progress bar and show the new data
-        st.experimental_rerun()
+        st.rerun() # <-- Updated to modern st.rerun()
         
     except Exception as e:
         st.error(f"An unexpected error occurred: {e}")
@@ -234,7 +238,7 @@ def refresh_all_data():
 # --- Helper to load cached data ---
 
 def load_cached_data():
-    if not COMBINED_DATA_PATH.exists():
+    if not os.path.exists(COMBINED_DATA_PATH): # <-- CHANGED
         return None
     try:
         with open(COMBINED_DATA_PATH, "r") as f:
@@ -315,22 +319,20 @@ else:
                 user = filtered_data[i + j]
                 
                 # Draw the card in the column
-                with cols[j].container():
-                    # Use a custom div for the card background
+                with cols[j].container(border=True): # Use border=True for a nice card effect
+                    
                     st.markdown(
                         f"""
-                        <div style="background-color: #1F2937; border-radius: 10px; padding: 20px; border: 1px solid #374151;">
-                            <div style="display: flex; flex-direction: column; align-items: center; text-align: center;">
-                                <img src="{user.get('robloxAvatarUrl', ROBLOX_AVATAR_PLACEHOLDER)}" 
-                                     style="width: 100px; height: 100px; border-radius: 50%; object-fit: cover; border: 2px solid #5865F2;">
-                                
-                                <h3 style="color: white; margin-top: 15px; margin-bottom: 0px; font-weight: bold; font-size: 1.1em;">
-                                    {user.get('robloxUsername', 'N/A')}
-                                </h3>
-                                <p style="color: #9CA3AF; margin-top: 5px; font-size: 0.9em;">
-                                    {user.get('discordDisplayName', user.get('discordUsername', 'N/A'))}
-                                </p>
-                            </div>
+                        <div style="display: flex; flex-direction: column; align-items: center; text-align: center; padding: 10px;">
+                            <img src="{user.get('robloxAvatarUrl', ROBLOX_AVATAR_PLACEHOLDER)}" 
+                                 style="width: 100px; height: 100px; border-radius: 50%; object-fit: cover; border: 2px solid #5865F2;">
+                            
+                            <h3 style="color: white; margin-top: 15px; margin-bottom: 0px; font-weight: bold; font-size: 1.1em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%;">
+                                {user.get('robloxUsername', 'N/A')}
+                            </h3>
+                            <p style="color: #9CA3AF; margin-top: 5px; font-size: 0.9em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%;">
+                                {user.get('discordDisplayName', user.get('discordUsername', 'N/A'))}
+                            </p>
                         </div>
                         """, 
                         unsafe_allow_html=True
@@ -345,3 +347,5 @@ else:
                         st.markdown(f"**Server Join Date:** {format_date(user.get('discordJoinDate'))}")
                         st.markdown(f"**Discord Acct. Creation:** {format_date(user.get('discordCreationDate'))}")
                         st.markdown(f"**Roblox Acct. Creation:** {format_date(user.get('robloxCreationDate'))}")
+
+
