@@ -7,7 +7,7 @@ import json
 import os
 import time
 from datetime import datetime
-import html  # <-- FIX 1: Import HTML library for escaping
+import html  # <-- CRITICAL FIX 1: Import HTML library for escaping
 
 # --- Page Configuration ---
 st.set_page_config(
@@ -258,7 +258,21 @@ def refresh_all_data():
             discord_info = discord_data_map.get(discord_id, {})
             
             # --- ROBUST FALLBACK LOGIC ---
-            discord_display = discord_info.get("displayName") or discord_info.get("username") or row["DiscordUsername"] or "N/A"
+            raw_display_name = discord_info.get("displayName")
+            
+            # --- NEW LOGIC: Parse the display name ---
+            if raw_display_name and "・" in raw_display_name:
+                parts = raw_display_name.split("・", 1) # Split only once
+                if len(parts) > 1:
+                    discord_display = parts[1].strip() # Get the part after '・' and remove whitespace
+                else:
+                    # This case handles if '・' is the last character
+                    discord_display = raw_display_name
+            else:
+                # Fallback if '・' is not present or raw_display_name is None
+                discord_display = raw_display_name or discord_info.get("username") or row["DiscordUsername"] or "N/A"
+            # --- END NEW LOGIC ---
+
             discord_user = discord_info.get("username") or row["DiscordUsername"] or "N/A"
             roblox_user = row["RobloxUsername"] or "N/A"
             
@@ -270,7 +284,7 @@ def refresh_all_data():
             
             combined_data.append({
                 "discordUsername": discord_user,
-                "discordDisplayName": discord_display,
+                "discordDisplayName": discord_display, # This is now the parsed name
                 "discordId": discord_id,
                 "discordJoinDate": discord_info.get("joinedAt"),
                 "discordCreationDate": discord_info.get("createdAt"),
@@ -364,7 +378,7 @@ else:
     # --- Display User Cards ---
     num_columns = 4
     
-    # --- FIX 2: "Invalid Date" Fix ---
+    # --- CRITICAL FIX 2: "Invalid Date" Fix ---
     def format_date(date_str):
         """Helper to format ISO date strings to be pretty."""
         if not date_str:
@@ -390,10 +404,11 @@ else:
                     # --- HTML CARD ---
                     avatar_url = user.get('robloxAvatarUrl')
                     
-                    # --- FIX 3: HTML Escaping ---
+                    # --- CRITICAL FIX 3: HTML Escaping ---
                     # This sanitizes names and prevents the UI from breaking
-                    roblox_name = html.escape(user.get('robloxUsername', "N/A"))
-                    discord_name = html.escape(user.get('discordDisplayName', "N/A"))
+                    # This fixes the "black bar" bug.
+                    roblox_name = html.escape(str(user.get('robloxUsername', "N/A")))
+                    discord_name = html.escape(str(user.get('discordDisplayName', "N/A"))) # This will be the parsed name
 
                     html_card = f"""
                     <div style="display: flex; flex-direction: column; align-items: center; text-align: center; padding: 10px; min-height: 200px;">
@@ -413,7 +428,7 @@ else:
                     st.markdown(html_card, unsafe_allow_html=True)
                     
                     with st.expander("View Details"):
-                        st.markdown(f"**Discord Username:** `{html.escape(user.get('discordUsername', 'N/A'))}`")
+                        st.markdown(f"**Discord Username:** `{html.escape(str(user.get('discordUsername', 'N/A')))}`")
                         st.markdown(f"**Discord ID:** `{user.get('discordId', 'N/A')}`")
                         st.markdown(f"**Roblox ID:** `{user.get('robloxId', 'N/A')}`")
                         st.markdown("---")
